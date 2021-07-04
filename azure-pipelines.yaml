@@ -19,9 +19,10 @@ stages:
         secureFile: 'terraform.tfvars'
 
     - task: InstallSSHKey@0
+      displayName: 'Install an SSH key'
       inputs:
         knownHostsEntry: 'known_hosts'
-        sshPublicKey: $(PUBLIC_KEY)
+        sshPublicKey: '$(PUBLIC_KEY)'
         sshKeySecureFile: 'id_rsa'
     
     - bash: |
