@@ -123,7 +123,7 @@ stages:
     displayName: Deploy FakeRestAPI
     pool:
       vmImage: 'ubuntu-18.04'
-    environment: 'TEST'
+    environment: 'jr'
     strategy:
       runOnce:
         deploy:
@@ -140,7 +140,7 @@ stages:
   - deployment: deployment_vm
     displayName: Deploy Virtual Machine
     environment:
-      name: 'TEST'
+      name: 'jr'
       resourceType: VirtualMachine
     strategy:
       runOnce:
