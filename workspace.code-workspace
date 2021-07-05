@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "automatedtesting",
+			"path": "..\\..\\Downloads\\project-starter-resources (1)\\Project Starter Resources\\automatedtesting"
+		},
+		{
+			"name": "terraform",
+			"path": "..\\..\\Downloads\\project-starter-resources (1)\\Project Starter Resources\\terraform"
+		},
+		{
+			"name": "Udacity_Ensuring-Quality-Releases",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
