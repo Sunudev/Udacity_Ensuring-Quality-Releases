@@ -115,6 +115,32 @@ stages:
               package: $(Pipeline.Workspace)/drop-fakerestapi/fakerestapi-$(Build.BuildId).zip
               deploymentMethod: zipDeploy
 
- ################################ Deploy VM #################################################################             
-
-################################ Starting Testing ###########################################################
+ ################################ Deploy VM ################################################################# 
+ 
+- stage: Deployment VM 
+  jobs:
+  - deployment: VMDeploy
+    displayName: NAME
+    environment:
+      name: 'TEST'
+      resourceType: VirtualMachine
+      tags: 'VM'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |
+                #! /bin/bash
+            
+            sudo apt-get upgrade -y
+            sudo apt-get install python3-pip -y
+            sudo apt-get install unzip -y
+            sudo apt-get install -y chromium-browser
+            echo "Chromium-Browser Installed"
+            pip3 install selenium
+            echo "Selenium Installed"
+            sudo rm -rf chromedriver*
+            wget "https://chromedriver.storage.googleapis.com/83.0.4103.39/chromedriver_linux64.zip"
