@@ -5,145 +5,147 @@ variables:
 ###################### Start Provisioning ############################
 
 stages:
+- stage: Provision
+  jobs:
+  - job: provision_azure_infrastructure
+    displayName: Provision Azure Infrastructure
+    pool:
+      vmImage: 'ubuntu-18.04'
+    steps:
+    - task: DownloadSecureFile@1
+      name: tfvardef
+      displayName: Download terraform.tfvars
+      inputs:
+        secureFile: 'terraform.tfvars'
+
+    # Needed for Terraform VM deployment
+    - task: InstallSSHKey@0
+      inputs:
+        knownHostsEntry: 'known_hosts'
+        sshPublicKey: $(PUBLIC_KEY)
+        sshKeySecureFile: 'id_rsa'
+    
+    - bash: |
+        cp $(Agent.TempDirectory)/terraform.tfvars $(System.DefaultWorkingDirectory)/terraform/environments/test
+      displayName: Copy terraform.tfvars 
+      
+    - bash: |
+        echo Pipeline workspace dir is $(Pipeline.Workspace)
+        echo Terraform variable definition file is $(tfvardef.secureFilePath)
+        cd $(Agent.TempDirectory)
+        pwd
+        ls -la
+        cat udacity_azure.pub
+        cd ~/.ssh/
+        pwd
+        ls -la
+        cat known_hosts
+        # $(System.DefaultWorkingDirectory) is equivalent to $(Build.SourcesDirectory)
+        cd $(System.DefaultWorkingDirectory)  
+        pwd
+        ls -la
+      displayName: Verify build environment (pre)  
+      
+    # install Terraform Azure Pipelines Extension by Microsoft DevLabs
+    # https://marketplace.visualstudio.com/items?itemName=ms-devlabs.custom-terraform-tasks
+
+
+        ######################## Start Building #########################
+
 - stage: Build
   jobs:
-  - job: Build
+  - job: build_artifacts
+    displayName: Build Artifacts
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     steps:
-      # Start provisioning tasks for terraform
-    - task: DownloadSecureFile@1
-      name: publicSSH
-      displayName: 'Download Public SSH Key'
+    - task: ArchiveFiles@2
+      displayName: Archive FakeRestAPI
       inputs:
-        secureFile: 'id_rsa'
-    - task: TerraformInstaller@0
-      displayName: 'Install terraform'
-      inputs:
-        terraformVersion: '0.12.26'
-    - script: 'cd terraform/environments/test && terraform init' 
-      displayName: 'Initialize terraform'
-    - script:
-        cd terraform/environments/test &&
-        terraform apply -auto-approve
-        -var="public_key_path=$(publicSSH.secureFilePath)"
-      displayName: 'Apply terraform configuration'
-      
-      # Start postman tests
-    - script: |
-        sudo npm install newman -g
-        sudo npm install newman-reporter-junitfull -g
-      displayName: 'Install postman dependencies'
-    - script:
-        newman run "$(System.DefaultWorkingDirectory)/automatedtesting/postman/Regression-test.postman_collection.json"
-        -e "$(System.DefaultWorkingDirectory)/automatedtesting/postman/udacity-dev.postman_environment.json"
-        -r cli,junitfull --reporter-junitfull-export JUnitReport-regression.xml
-      displayName: 'Run regression test'
-    - script:
-        newman run "$(System.DefaultWorkingDirectory)/automatedtesting/postman/Data-Validation-test.postman_collection.json"
-        -e "$(System.DefaultWorkingDirectory)/automatedtesting/postman/udacity-dev.postman_environment.json"
-        -r cli,junitfull --reporter-junitfull-export JUnitReport-data-validation.xml
-      displayName: 'Run Data Validation test'
-    - task: PublishTestResults@2
-      displayName: 'Publish integrations test'
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: 'JUnitReport*.xml'
-        mergeTestResults: true
-        testRunTitle: 'Publish postman test result'
-      
-      # Publish artifacts for deployment
-    - template: templates/publish-archive.yaml
-      parameters:
-        name: fakerestapi
-        path: '$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/fakerestapi'
-    - template: templates/publish-archive.yaml
-      parameters:
-        name: UITest
-        path: '$(System.DefaultWorkingDirectory)/automatedtesting/selenium/login.py'
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/fakerestapi'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/fakerestapi-$(Build.BuildId).zip'
+        verbose: true 
 
-- stage: Deploy
+    - task: PublishPipelineArtifact@1
+      displayName: Publish FakeRestAPI artifact
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/fakerestapi-$(Build.BuildId).zip'
+        artifactName: 'drop-fakerestapi'
+  
+    - task: ArchiveFiles@2
+      displayName: Archive Selenium
+      inputs:
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/automatedtesting/selenium'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/selenium-$(Build.BuildId).zip'
+        verbose: true
+  
+    - task: PublishPipelineArtifact@1
+      displayName: Publish Selenium artifact
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/selenium-$(Build.BuildId).zip'
+        artifactName: 'drop-selenium'
+
+    ############### Starting Deployments #################################
+
+- stage: Deployment
   jobs:
-  - deployment: FakeRestAPI
+  - deployment: deployment_fakerestapi
+    displayName: Deploy FakeRestAPI
     pool:
-      vmImage: 'ubuntu-latest'
-    environment: 'TEST'
+      vmImage: 'ubuntu-18.04'
+    environment: 'jr'
     strategy:
       runOnce:
         deploy:
           steps:
-            # Deploy to app service
           - task: AzureWebApp@1
-            displayName: 'Deploy Azure Web App'
+            displayName: Deploy Azure WebApp
             inputs:
-              azureSubscription: 'Visual Studio Enterprise Subscription (40fe838b-6ee9-466a-959b-c681d6a4f4c1)'
+              azureSubscription: 'azurerm-sc'
               appName: 'sunudev-webapi'
               appType: webApp
-              package: $(Pipeline.Workspace)/drop-fakerestapi/$(Build.BuildId)-fakerestapi.zip          
-  - deployment: VMDeploy
-    displayName: Deploy UI Test suite
+              package: $(Pipeline.Workspace)/drop-fakerestapi/fakerestapi-$(Build.BuildId).zip
+              deploymentMethod: zipDeploy
+
+  - deployment: deployment_vm
+    displayName: Deploy Virtual Machine
     environment:
-      name:  test
+      name: 'jr'
       resourceType: VirtualMachine
-      tags: test
     strategy:
       runOnce:
         deploy:
           steps:
-            # Start Selenium ui tests
-          - task: Bash@3
-            displayName: Install UI Test dependencies
-            inputs:
-              targetType: 'inline'
-              script: |
-                #! /bin/bash
-                
-                sudo apt-get update
-                sudo apt-get upgrade -y
-                sudo apt-get install python3-pip unzip expect -y
-                
-                wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-                sudo dpkg --install google-chrome-stable_current_amd64.deb
-                sudo apt install --assume-yes --fix-broken
-                pip3 install --user selenium
-                wget https://chromedriver.storage.googleapis.com/83.0.4103.39/chromedriver_linux64.zip
-                unzip chromedriver*.zip
-                sudo mv chromedriver -f /usr/bin
-          - task: Bash@3
-            displayName: Run UI Test
-            inputs:
-              targetType: 'inline'
-              script: |
-                #! /bin/bash
-                
-                cd $(Pipeline.Workspace)/drop-UITest
-                unzip -o $(Build.BuildId)-UITest.zip
-                mkdir -p ~/logs
-                unbuffer python3 login.py | tee -a ~/logs/output.log.txt
-- stage: PostDeploy
-  jobs:
-  - job: PeformanceTest
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-      # Start Jmeter peformance tests
-    - script: |
-        sudo apt-get install unzip -y
-        wget https://downloads.apache.org//jmeter/binaries/apache-jmeter-5.3.zip
-        unzip apache-jmeter-5.3.zip
-        cd apache-jmeter-5.3/bin
-        sudo ln -r -s -f jmeter /usr/bin
-      displayName: 'Install dependencies for Peformance testing'    
-    - script: |
-        cd $(System.DefaultWorkingDirectory)/automatedtesting/jmeter
-        mkdir -p peformance-report
-        echo Starting Stress test
-        jmeter -n -t StressTest.jmx -l result-file-stress.csv -e -f -o ./peformance-report/stress-test
-        sleep 10s
-        echo Starting Endurance test
-        jmeter -n -t EnduranceTest.jmx -l result-file-endurance.csv -e -f -o ./peformance-report/endurance-test
-      displayName: 'Run Peformance test suite'
-    - template: templates/publish-archive.yaml
-      parameters:
-        name: peformance-report
-        path: '$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/peformance-report'
+          - bash: |
+              pwd
+              hostname
+              uname -a
+              cat /etc/*-release
+              sudo apt-get install software-properties-common -y
+              sudo apt-add-repository universe -y
+              sudo apt-get update -y
+              sudo apt-get install python3-pip -y
+              sudo apt-get install unzip -y
+              sudo apt-get install -y chromium-browser
+              sudo apt-get install -y chromium-chromedriver
+              python3 -m pip install --upgrade pip
+              pip3 install selenium
+              python3 -V
+              pip3 -V
+              /usr/bin/chromium-browser --version
+              /usr/bin/chromedriver --version
+              python3 -c "import selenium; print('Selenium Version:', selenium.__version__)"
+              # Install Log Analytics agent on Linux computers (only need to run once)
+              # wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh
+              # sh onboard_agent.sh -w ${AZURE_LOG_ANALYTICS_ID} -s ${AZURE_LOG_ANALYTICS_PRIMARY_KEY}
+              # sudo /opt/microsoft/omsagent/bin/service_control restart ${AZURE_LOG_ANALYTICS_ID}
+            env:  # To use secret variables in a script, we must explicitly map them as environment variables.
+              AZURE_LOG_ANALYTICS_ID: $(AZURE_LOG_ANALYTICS_ID)
+              AZURE_LOG_ANALYTICS_PRIMARY_KEY: $(AZURE_LOG_ANALYTICS_PRIMARY_KEY)
+            displayName: Configure selenium
+
+################################ Starting Testing ###########################################################
