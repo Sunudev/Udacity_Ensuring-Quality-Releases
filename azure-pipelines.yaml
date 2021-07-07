@@ -115,57 +115,6 @@ stages:
               package: $(Pipeline.Workspace)/drop-fakerestapi/fakerestapi-$(Build.BuildId).zip
               deploymentMethod: zipDeploy
 
-- stage: Test
-  jobs:
-  - job: LoadTest
-    pool:
-      name: Hosted Ubuntu 1604
-    steps:
-    - task: JMeterInstaller@0
-      inputs:
-        jmeterVersion: '5.2.1'
-    - task: CmdLine@2
-      displayName: "Jmeter Load Test"
-      inputs:
-        script: |
-          mkdir -p load_html_report
-          jmeter -n -t Load.jmx -l load-results-report.csv -e -o load_html_report
-        workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/'
-    - task: CmdLine@2
-      displayName: "Jmeter Endurance Test"
-      inputs:
-        script: |
-          mkdir -p endurance_html_report
-          jmeter -n -t Endurance.jmx -l endurance-results-report.csv -e -o endurance_html_report
-        workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/'
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/endurance_html_report'
-        ArtifactName: 'drop-endurance-report'
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/load_html_report'
-        ArtifactName: 'drop-load-report'
-  - job: IntegrationTesting
-    pool:
-          name: Hosted Ubuntu 1604
-    steps:
-    - task: CmdLine@2
-      displayName: Install Newman Runner
-      inputs: 
-        script: sudo npm install -g newman
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-    - task: CmdLine@2
-      displayName: Run Newman Runner
-      continueOnError: true
-      inputs:
-        script: newman run StarterAPIs.json -e final_project_postman_environment.json --reporters cli,junit --reporter-junit-export Results\junitReport.xml 
-        workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/postman/'
-    - task: PublishTestResults@2
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '$(System.DefaultWorkingDirectory)/automatedtesting/postman/*.xml'
-        searchFolder: 
-        testRunTitle: 'Integration Tests'
+ ################################ Deploy VM #################################################################             
 
 ################################ Starting Testing ###########################################################
