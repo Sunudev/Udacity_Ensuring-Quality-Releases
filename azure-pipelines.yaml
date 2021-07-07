@@ -18,11 +18,11 @@ stages:
       inputs:
         secureFile: 'terraform.tfvars'
 
-    # Needed for Terraform VM deployment
+    # Needed for Terraform VMghg deployment
     - task: InstallSSHKey@0
       inputs:
         knownHostsEntry: 'known_hosts'
-        sshPublicKey: $(PUBLIC_KEY)
+        sshPublicKey: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCgFnJiEACZM2FWubsfJivwA2Kr9dAt95caDSjx3fo4p3IYYJItL3U+fl3tgbmYi4am2RrsihSAEAOLvWJaEkivDmwee5/wt0wmw2MqrqsNGy+WSWxsMMy5d4P/BsDdQfbizt7GGIMcODIXYheqoj8Eye3AsLbN47GZv188A+h+5CCsz5NeTTQppRKUtLY+Jwj8+1MXM60MSydyD9keMs3N4v9Sh+rqTfhaeMSBzNAmDIv7sMFR/WsYTglBPgBbrVV+PztfTiV62a7pE1YErrQ2opxrUhS1wK1fsDherxGkDiNCY9YmaI9TXjjBXRIIJlbUAwF0JMotgsTm/wy6JlLRIp9Gb6hH0vKtNo87WOD2wlOH4MuTGeVMs5z64VSO30oSZA38xCd+RqA474+leXtUML4jBZzSa45E/GbP4W1CAnOwKi76wJdK+anKadvzuCqHT1C3594GKKrcwGiI6ZcVXRCrNM8qkCVj9Br+BzwA3jEZ2xWoqGH2ewi+OQJhEMlDSp0pKKoi6X+1bCA+iPfiopHM8cV4I9KbgskisnJigvzYemcE+ETO24G9Y6cvWVjJ4sWVw8MtimiSmlZB8JUrm+Pg0FIgZ58gr5rnr+4YP/IAi5J5kvhd97Aat2L0I8KuDK+xRXHgSLLGjVAk2cRv9bBtGkYOGRfwQR9mhTkjJw== moussa@cc-7d3ff325-dc94f8d86-pmcxt'
         sshKeySecureFile: 'id_rsa'
     
     - bash: |
