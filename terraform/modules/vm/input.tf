@@ -1,24 +1,11 @@
-# Resource Group/Location
-variable "location" {
-    type          = string
-}
-variable "resource_group" {
-    type          = string
-}
+variable "location" {}
+variable "resource_group" {}
 
-# Resource Virtual Machine
-variable "application_type" {
-    type          = string
-}
-variable "resource_type" {
-    type          = string
-}
-variable "public_ip_address_id" {
-    type          = string
-}
-variable "public_subnet_id" {
-    type          = string
-}
-variable "admin_username" {
-    type          = string
-}
+variable "public_ip_address_id" {}
+variable "subnet_id" {}
+
+
+variable "application_type" {}
+variable "resource_type" {}
+
+variable "vm_admin_username" {}
