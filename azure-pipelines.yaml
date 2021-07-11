@@ -179,15 +179,3 @@ stages:
               AZURE_LOG_ANALYTICS_ID: $(AZURE_LOG_ANALYTICS_ID)
               AZURE_LOG_ANALYTICS_PRIMARY_KEY: $(AZURE_LOG_ANALYTICS_PRIMARY_KEY)
             displayName: Configure selenium
-          - download: current
-            displayName: 'Download Selenium'
-            artifact: selenium
-          - task: Bash@3
-            displayName: UI Tests
-            inputs:
-              targetType: 'inline'
-              script: |
-                unzip -o $(Pipeline.Workspace)/selenium/selenium-tests.zip -d .
-                sudo mkdir /var/logs
-                python3 uitests.py > ui-logs.log
-                sudo mv ui-logs.log /var/logs
